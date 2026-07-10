@@ -186,6 +186,22 @@ class AdminDialog(QDialog):
         self._passcode_field.setStyleSheet(self._field_style())
         root.addWidget(self._passcode_field)
 
+        # ── Diagnostics / Device Test ──
+        sep_diag = QFrame()
+        sep_diag.setFrameShape(QFrame.Shape.HLine)
+        sep_diag.setStyleSheet("color: #ddd;")
+        root.addWidget(sep_diag)
+
+        btn_test = QPushButton("🔍  Probar Cámara y Micrófono")
+        btn_test.setFixedHeight(38)
+        btn_test.setStyleSheet(
+            "QPushButton { border: 2px solid #27AE60; border-radius: 8px; padding: 0 16px;"
+            " background: white; color: #27AE60; font-weight: bold; }"
+            " QPushButton:hover { background: #27AE60; color: white; }"
+        )
+        btn_test.clicked.connect(self._test_devices)
+        root.addWidget(btn_test)
+
         root.addStretch()
 
         # ── Footer buttons ──
@@ -322,3 +338,135 @@ class AdminDialog(QDialog):
 
     def result_settings(self) -> dict:
         return self._settings
+
+    def _test_devices(self):
+        diag = DeviceTestDialog(self)
+        diag.exec()
+
+
+# ─────────────────────────────────────────────
+#  Device Test Dialog (Camera & Mic Test)
+# ─────────────────────────────────────────────
+class DeviceTestDialog(QDialog):
+    """Diagnose local camera and microphone via WebRTC inside a web sandbox."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Prueba de Cámara y Micrófono")
+        self.setMinimumSize(500, 520)
+        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
+        self._build_ui()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        from PyQt6.QtWebEngineWidgets import QWebEngineView
+        from PyQt6.QtWebEngineCore import QWebEnginePage
+
+        self.web = QWebEngineView()
+        self.web.page().featurePermissionRequested.connect(self._grant_permission)
+
+        test_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', sans-serif; background: #0F2027; color: white; margin: 20px; text-align: center; }
+          h2 { color: #34C0D1; margin-top: 5px; }
+          video { width: 85%; max-width: 360px; border-radius: 12px; background: #203A43; margin-top: 10px; border: 2px solid #34C0D1; }
+          .bar-container { width: 80%; background: #203A43; height: 18px; border-radius: 9px; margin: 15px auto; overflow: hidden; border: 1px solid #34C0D1; }
+          .bar { height: 100%; width: 0%; background: #27AE60; transition: width 0.1s; }
+          .status { font-weight: bold; margin: 15px; color: #EFEFEF; }
+          button { background: #34C0D1; color: #0F2027; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+          button:hover { background: #29a8b9; }
+        </style>
+        </head>
+        <body>
+          <h2>Prueba de Dispositivos</h2>
+          <button id="startBtn">Iniciar Prueba</button>
+          <div class="status" id="status">Haz clic en "Iniciar Prueba" para comenzar la transmisión de video y audio.</div>
+          <video id="video" autoplay playsinline muted></video>
+          <h3>Nivel de Entrada del Micrófono</h3>
+          <div class="bar-container"><div class="bar" id="micBar"></div></div>
+          <script>
+            const startBtn = document.getElementById('startBtn');
+            const status = document.getElementById('status');
+            const video = document.getElementById('video');
+            const micBar = document.getElementById('micBar');
+            let audioContext, analyser, microphone, javascriptNode, localStream;
+
+            startBtn.onclick = async () => {
+              try {
+                status.textContent = 'Solicitando acceso a cámara y micrófono...';
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                status.textContent = '✅ Dispositivos autorizados y funcionando correctamente';
+                video.srcObject = localStream;
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(localStream);
+                javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+
+                analyser.smoothingTimeConstant = 0.3;
+                analyser.fftSize = 1024;
+
+                microphone.connect(analyser);
+                analyser.connect(javascriptNode);
+                javascriptNode.connect(audioContext.destination);
+
+                javascriptNode.onaudioprocess = () => {
+                  const array = new Uint8Array(analyser.frequencyBinCount);
+                  analyser.getByteFrequencyData(array);
+                  let values = 0;
+                  const length = array.length;
+                  for (let i = 0; i < length; i++) {
+                    values += array[i];
+                  }
+                  const average = values / length;
+                  const percentage = Math.min(100, Math.round((average / 80) * 100));
+                  micBar.style.width = percentage + '%';
+                };
+                startBtn.style.display = 'none';
+              } catch (err) {
+                status.textContent = '❌ Error de acceso: ' + err.name + ' - ' + err.message;
+                status.style.color = '#e74c3c';
+              }
+            };
+          </script>
+        </body>
+        </html>
+        """
+        self.web.setHtml(test_html)
+        layout.addWidget(self.web)
+
+        btn_close = QPushButton("Cerrar Prueba")
+        btn_close.setFixedHeight(40)
+        btn_close.setStyleSheet(
+            "QPushButton { border: none; background: #c0392b; color: white; font-weight: bold; font-size: 13px; }"
+            " QPushButton:hover { background: #a93226; }"
+        )
+        btn_close.clicked.connect(self.close)
+        layout.addWidget(btn_close)
+
+    def _grant_permission(self, url, feature):
+        from PyQt6.QtWebEngineCore import QWebEnginePage
+        ALLOWED = {
+            QWebEnginePage.Feature.MediaAudioCapture,
+            QWebEnginePage.Feature.MediaVideoCapture,
+            QWebEnginePage.Feature.MediaAudioVideoCapture,
+        }
+        if feature in ALLOWED:
+            self.web.page().setFeaturePermission(
+                url, feature, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser
+            )
+        else:
+            self.web.page().setFeaturePermission(
+                url, feature, QWebEnginePage.PermissionPolicy.PermissionDeniedByUser
+            )
+
+    def closeEvent(self, event):
+        self.web.setHtml("")  # Stop camera/mic capture
+        super().closeEvent(event)
