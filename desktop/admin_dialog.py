@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QScrollArea, QWidget, QFrame, QMessageBox, QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QFont, QColor, QPalette
 
 
@@ -439,7 +439,7 @@ class DeviceTestDialog(QDialog):
         </body>
         </html>
         """
-        self.web.setHtml(test_html)
+        self.web.setHtml(test_html, QUrl("https://localhost"))
         layout.addWidget(self.web)
 
         btn_close = QPushButton("Cerrar Prueba")
