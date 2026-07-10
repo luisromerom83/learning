@@ -375,19 +375,22 @@ class KioskWindow(QMainWindow):
 
     def _grant_permission(self, url, feature):
         """Auto-grant camera and microphone permissions."""
-        ALLOWED = {
-            QWebEnginePage.Feature.MediaAudioCapture,
-            QWebEnginePage.Feature.MediaVideoCapture,
-            QWebEnginePage.Feature.MediaAudioVideoCapture,
-        }
-        if feature in ALLOWED:
-            self._webview.page().setFeaturePermission(
-                url, feature, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser
-            )
-        else:
-            self._webview.page().setFeaturePermission(
-                url, feature, QWebEnginePage.PermissionPolicy.PermissionDeniedByUser
-            )
+        print(f"Permission requested for origin: {url.toString()}, feature: {feature}")
+        try:
+            ALLOWED = {
+                QWebEnginePage.Feature.MediaAudioCapture,
+                QWebEnginePage.Feature.MediaVideoCapture,
+                QWebEnginePage.Feature.MediaAudioVideoCapture,
+            }
+            if feature in ALLOWED:
+                policy = QWebEnginePage.PermissionPolicy.PermissionGrantedByUser
+                print(f"-> Granting permission: {feature}")
+            else:
+                policy = QWebEnginePage.PermissionPolicy.PermissionDeniedByUser
+                print(f"-> Denying permission: {feature}")
+            self._webview.page().setFeaturePermission(url, feature, policy)
+        except Exception as e:
+            print(f"ERROR in _grant_permission: {e}")
 
     # ─── Key events ──────────────────────────────────────────────
 

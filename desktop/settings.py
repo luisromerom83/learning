@@ -12,6 +12,18 @@ def _ensure_dir():
     os.makedirs(APP_DATA_DIR, exist_ok=True)
 
 
+def setup_logging():
+    import sys
+    _ensure_dir()
+    log_file = os.path.join(APP_DATA_DIR, "debug.log")
+    try:
+        sys.stdout = open(log_file, "a", encoding="utf-8", buffering=1)
+        sys.stderr = sys.stdout
+        print("\n--- Application Start ---")
+    except Exception:
+        pass
+
+
 def load_settings() -> dict:
     """Load all settings from disk, returning defaults if missing."""
     if not os.path.exists(SETTINGS_FILE):

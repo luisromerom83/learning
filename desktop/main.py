@@ -1,8 +1,11 @@
 import sys
 import os
 
-# Enable Chromium hardware acceleration and DPI awareness
-os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--enable-gpu-rasterization")
+import settings
+settings.setup_logging()
+
+# Use safer Chromium flags to prevent rendering issues on hybrid GPUs
+os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--ignore-gpu-blocklist")
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
