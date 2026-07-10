@@ -1,0 +1,101 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'desktop/**'
+  pull_request:
+    paths:
+      - 'desktop/**'
+  workflow_dispatch:   # permite dispararlo manualmente desde GitHub
+
+jobs:
+  build-windows:
+    name: Build .exe (Windows)
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python ──────────────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── 3. Cache pip ───────────────────────────────────────────
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('desktop/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # ── 4. Install dependencies ────────────────────────────────
+      - name: Install dependencies
+        working-directory: desktop
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # ── 5. Build with PyInstaller ──────────────────────────────
+      - name: Build executable
+        working-directory: desktop
+        run: |
+          pyinstaller `
+            --onefile `
+            --windowed `
+            --name "EducationSpaceJunior" `
+            --hidden-import "PyQt6.QtWebEngineWidgets" `
+            --hidden-import "PyQt6.QtWebEngineCore" `
+            --hidden-import "PyQt6.sip" `
+            main.py
+
+      # ── 6. Upload artifact ─────────────────────────────────────
+      - name: Upload .exe as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EducationSpaceJunior-Windows
+          path: desktop/dist/EducationSpaceJunior.exe
+          retention-days: 30
+
+  # ── Optional: create a GitHub Release on version tags ─────────
+  release:
+    name: Create GitHub Release
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: EducationSpaceJunior-Windows
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Education Space Junior ${{ github.ref_name }}"
+          body: |
+            ## Education Space Junior Kiosk — Windows Desktop
+
+            ### Instalación
+            1. Descarga `EducationSpaceJunior.exe`
+            2. Ejecuta el archivo (no requiere instalación)
+            3. En el primer inicio, haz clic en ⚙ para configurar la URL
+
+            ### Notas
+            - Requiere Windows 10 / 11 (64-bit)
+            - La configuración se guarda en `%APPDATA%\EducationSpaceJunior\`
+          files: dist/EducationSpaceJunior.exe
+          draft: false
+          prerelease: false
