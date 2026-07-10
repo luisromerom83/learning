@@ -84,8 +84,7 @@ def main():
 
     # Starts pywebview engine loop.
     # On Windows, this runs WebView2 automatically.
-    # We enable debug=True to allow Developer Tools (Right-Click -> Inspect)
-    webview.start(debug=True)
+    webview.start(debug=False)
 
 
 if __name__ == "__main__":
