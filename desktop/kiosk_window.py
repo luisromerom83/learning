@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QFrame, QScrollArea, QSizePolicy, QStackedWidget
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePermissionRequest
+from PyQt6.QtWebEngineCore import QWebEnginePage
 from PyQt6.QtCore import QUrl, Qt, QSize
 from PyQt6.QtGui import QFont, QLinearGradient, QColor, QPainter, QBrush
 
@@ -316,7 +316,7 @@ class KioskWindow(QMainWindow):
 
         # ── WebView ──
         self._webview = QWebEngineView()
-        self._webview.page().permissionRequested.connect(self._grant_permission)
+        self._webview.page().featurePermissionRequested.connect(self._grant_permission)
         layout.addWidget(self._webview, stretch=1)
 
         return root
@@ -373,19 +373,21 @@ class KioskWindow(QMainWindow):
             cfg.save_settings(self._settings)
             self._show_correct_screen()
 
-    # ─── WebEngine permissions ───────────────────────────────────
-
-    def _grant_permission(self, permission: QWebEnginePermissionRequest):
+    def _grant_permission(self, url, feature):
         """Auto-grant camera and microphone permissions."""
         ALLOWED = {
-            QWebEnginePermissionRequest.Feature.MediaAudioCapture,
-            QWebEnginePermissionRequest.Feature.MediaVideoCapture,
-            QWebEnginePermissionRequest.Feature.MediaAudioVideoCapture,
+            QWebEnginePage.Feature.MediaAudioCapture,
+            QWebEnginePage.Feature.MediaVideoCapture,
+            QWebEnginePage.Feature.MediaAudioVideoCapture,
         }
-        if permission.feature() in ALLOWED:
-            permission.grant()
+        if feature in ALLOWED:
+            self._webview.page().setFeaturePermission(
+                url, feature, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser
+            )
         else:
-            permission.deny()
+            self._webview.page().setFeaturePermission(
+                url, feature, QWebEnginePage.PermissionPolicy.PermissionDeniedByUser
+            )
 
     # ─── Key events ──────────────────────────────────────────────
 
