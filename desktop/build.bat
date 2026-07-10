@@ -1,7 +1,7 @@
 @echo off
 REM ─────────────────────────────────────────────────
 REM  Build script — Education Space Junior (Windows)
-REM  Requires: pip install pyinstaller PyQt6 PyQt6-WebEngine
+REM  Requires: pip install pyinstaller pywebview
 REM ─────────────────────────────────────────────────
 
 echo [1/3] Installing dependencies...
@@ -12,10 +12,7 @@ pyinstaller ^
   --onefile ^
   --windowed ^
   --name "EducationSpaceJunior" ^
-  --icon "assets\icon.ico" ^
-  --add-data "assets;assets" ^
-  --hidden-import "PyQt6.QtWebEngineWidgets" ^
-  --hidden-import "PyQt6.QtWebEngineCore" ^
+  --add-data "index.html;." ^
   main.py
 
 echo [3/3] Done!

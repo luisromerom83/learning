@@ -51,9 +51,7 @@ jobs:
             --onefile `
             --windowed `
             --name "EducationSpaceJunior" `
-            --hidden-import "PyQt6.QtWebEngineWidgets" `
-            --hidden-import "PyQt6.QtWebEngineCore" `
-            --hidden-import "PyQt6.sip" `
+            --add-data "index.html;." `
             main.py
 
       # ── 6. Upload artifact ─────────────────────────────────────
