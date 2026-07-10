@@ -70,17 +70,17 @@ def main():
 
     print(f"Loading local HTML from: {html_path}")
 
+    api = Api()
+
     # Main Hub window
     main_win = webview.create_window(
         title="Education Space Junior",
         url=html_path,
         width=1000,
         height=700,
-        resizable=True
+        resizable=True,
+        js_api=api
     )
-
-    api = Api()
-    main_win.expose(api)
 
     # Starts pywebview engine loop.
     # On Windows, this runs WebView2 automatically.
