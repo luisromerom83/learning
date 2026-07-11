@@ -541,7 +541,11 @@
       <h4 class="section-title">Agregar Nueva URL</h4>
       <div class="form-group">
         <input type="text" id="newLabelField" class="input-field" placeholder="Etiqueta (ej. Plataforma A)" style="margin-bottom: 8px;">
-        <input type="text" id="newUrlField" class="input-field" placeholder="URL (ej. https://junior.educationspace.com)">
+        <input type="text" id="newUrlField" class="input-field" placeholder="URL (ej. https://junior.educationspace.com)" style="margin-bottom: 8px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <input type="text" id="newUsernameField" class="input-field" placeholder="Usuario (opcional)">
+          <input type="password" id="newPasswordField" class="input-field" placeholder="Contraseña (opcional)">
+        </div>
         <div id="urlErrorMsg" class="error-msg">⚠ Rellene todos los campos correctamente</div>
       </div>
       <button class="btn btn-accent" onclick="addNewUrl()">＋ Añadir a la lista</button>
@@ -602,11 +606,16 @@
           const color = CARD_COLORS[idx % CARD_COLORS.length];
           const badgeChar = (item.label && item.label.length > 0) ? item.label[0].toUpperCase() : '?';
           
+          const hasCreds = (item.username || item.password);
+          const keyIcon = hasCreds ? ' <span title="Autofill habilitado" style="font-size: 13px; cursor: help;">🔑</span>' : '';
+          const userEscaped = (item.username || '').replace(/'/g, "\\'");
+          const passEscaped = (item.password || '').replace(/'/g, "\\'");
+          
           const cardHtml = `
-            <div class="url-card" onclick="openTargetUrl('${item.label}', '${item.url}')">
+            <div class="url-card" onclick="openTargetUrl('${item.label.replace(/'/g, "\\'")}', '${item.url.replace(/'/g, "\\'")}', '${userEscaped}', '${passEscaped}')">
               <div class="card-badge" style="background: ${color}">${badgeChar}</div>
               <div class="card-info">
-                <div class="card-title">${item.label}</div>
+                <div class="card-title">${item.label}${keyIcon}</div>
                 <div class="card-url">${item.url}</div>
               </div>
             </div>
@@ -616,11 +625,11 @@
       }
     }
 
-    function openTargetUrl(label, url) {
+    function openTargetUrl(label, url, username, password) {
       if (window.pywebview && window.pywebview.api) {
-        window.pywebview.api.open_url(label, url);
+        window.pywebview.api.open_url(label, url, username || null, password || null);
       } else {
-        console.log(`Fallback open: ${label} -> ${url}`);
+        console.log(`Fallback open: ${label} -> ${url} (User: ${username})`);
       }
     }
 
@@ -656,6 +665,8 @@
       document.getElementById('adminPassField').value = appSettings.passcode;
       document.getElementById('newLabelField').value = '';
       document.getElementById('newUrlField').value = '';
+      document.getElementById('newUsernameField').value = '';
+      document.getElementById('newPasswordField').value = '';
       document.getElementById('urlErrorMsg').style.display = 'none';
       renderAdminUrls();
       openModal('adminModal');
@@ -671,11 +682,13 @@
       tempUrls.forEach((item, idx) => {
         const color = CARD_COLORS[idx % CARD_COLORS.length];
         const badgeChar = (item.label && item.label.length > 0) ? item.label[0].toUpperCase() : '?';
+        const hasCreds = (item.username || item.password);
+        const keyIcon = hasCreds ? ' <span title="Autofill habilitado" style="font-size: 11px;">🔑</span>' : '';
         const itemHtml = `
           <div class="admin-url-item">
             <div class="item-badge" style="background: ${color}">${badgeChar}</div>
             <div class="item-info">
-              <div class="item-name">${item.label}</div>
+              <div class="item-name">${item.label}${keyIcon}</div>
               <div class="item-url">${item.url}</div>
             </div>
             <button class="delete-btn" onclick="deleteTempUrl(${idx})">✕</button>
@@ -693,6 +706,8 @@
     function addNewUrl() {
       const label = document.getElementById('newLabelField').value.trim();
       let url = document.getElementById('newUrlField').value.trim();
+      const username = document.getElementById('newUsernameField').value.trim();
+      const password = document.getElementById('newPasswordField').value;
       const err = document.getElementById('urlErrorMsg');
       
       if (!label || !url) {
@@ -705,9 +720,11 @@
         url = 'https://' + url;
       }
 
-      tempUrls.push({ label, url });
+      tempUrls.push({ label, url, username, password });
       document.getElementById('newLabelField').value = '';
       document.getElementById('newUrlField').value = '';
+      document.getElementById('newUsernameField').value = '';
+      document.getElementById('newPasswordField').value = '';
       err.style.display = 'none';
       renderAdminUrls();
     }
